@@ -2,17 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/app/extensions/date_time_extensions.dart';
 import 'package:flutter_application_1/app/features/tasks/models/task_item.dart';
 
-class TaskDetailsPage extends StatefulWidget {
+class TaskDetailsPage extends StatelessWidget {
   const TaskDetailsPage({required this.task, super.key});
 
   final TaskItem task;
-
-  @override
-  State<TaskDetailsPage> createState() => _TaskDetailsPageState();
-}
-
-class _TaskDetailsPageState extends State<TaskDetailsPage> {
-  TaskItem get task => widget.task;
 
   @override
   Widget build(BuildContext context) {
@@ -63,37 +56,12 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
             padding: const EdgeInsets.all(17),
             decoration: _cardDecoration,
             child: Text(
-              task.details,
+              task.details.isEmpty ? 'Описание не добавлено' : task.details,
               style: const TextStyle(
                 color: Color(0xFF77798A),
                 fontSize: 14,
                 height: 1.6,
               ),
-            ),
-          ),
-          const SizedBox(height: 28),
-          FilledButton.icon(
-            onPressed: () => setState(() => task.isDone = !task.isDone),
-            style: FilledButton.styleFrom(
-              backgroundColor: task.isDone
-                  ? const Color(0xFFECE9FF)
-                  : const Color(0xFF6958D8),
-              foregroundColor: task.isDone
-                  ? const Color(0xFF6958D8)
-                  : Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            icon: Icon(
-              task.isDone
-                  ? Icons.undo_rounded
-                  : Icons.check_circle_outline_rounded,
-            ),
-            label: Text(
-              task.isDone ? 'Вернуть в работу' : 'Отметить выполненной',
-              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -143,22 +111,6 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
               fontSize: 23,
               fontWeight: FontWeight.w800,
               height: 1.25,
-            ),
-          ),
-          const SizedBox(height: 15),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              task.isDone ? 'Выполнена' : 'В работе',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
             ),
           ),
         ],

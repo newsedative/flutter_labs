@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/app/extensions/date_time_extensions.dart';
-import 'package:flutter_application_1/app/features/tasks/models/task_filter.dart';
 import 'package:flutter_application_1/app/features/tasks/models/task_item.dart';
 import 'package:flutter_application_1/app/router/app_router.dart';
 import 'package:flutter_application_1/app/widgets/count_badge.dart';
@@ -15,7 +14,6 @@ class TasksHomePage extends StatefulWidget {
 
 class _TasksHomePageState extends State<TasksHomePage> {
   final _searchController = TextEditingController();
-  TaskFilter _filter = TaskFilter.all;
   String _query = '';
   final List<TaskItem> _tasks = [
     TaskItem(
@@ -58,29 +56,19 @@ class _TasksHomePageState extends State<TasksHomePage> {
     super.dispose();
   }
 
-  int get _completedCount => _tasks.where((task) => task.isDone).length;
-
   List<TaskItem> get _visibleTasks {
     return _tasks.where((task) {
-      final matchesFilter = switch (_filter) {
-        TaskFilter.all => true,
-        TaskFilter.active => !task.isDone,
-        TaskFilter.done => task.isDone,
-      };
       final normalizedQuery = _query.toLowerCase();
       final matchesSearch =
           task.title.toLowerCase().contains(normalizedQuery) ||
           task.details.toLowerCase().contains(normalizedQuery) ||
           task.category.toLowerCase().contains(normalizedQuery);
-      return matchesFilter && matchesSearch;
+      return matchesSearch;
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final completed = _completedCount;
-    final total = _tasks.length;
-
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -104,9 +92,7 @@ class _TasksHomePageState extends State<TasksHomePage> {
                     'Твой план',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  const SizedBox(height: 20),
-                  _buildProgressCard(completed, total),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 24),
                   _buildSearchField(),
                   const SizedBox(height: 22),
                   Row(
@@ -120,8 +106,6 @@ class _TasksHomePageState extends State<TasksHomePage> {
                     ],
                   ),
                   const SizedBox(height: 15),
-                  _buildFilters(),
-                  const SizedBox(height: 14),
                   if (_visibleTasks.isEmpty)
                     _buildEmptyState()
                   else
@@ -131,9 +115,6 @@ class _TasksHomePageState extends State<TasksHomePage> {
                         child: TaskCard(
                           task: task,
                           onTap: () => _openTaskDetails(task),
-                          onChanged: (value) {
-                            setState(() => task.isDone = value ?? false);
-                          },
                         ),
                       ),
                     ),
@@ -154,10 +135,8 @@ class _TasksHomePageState extends State<TasksHomePage> {
   }
 
   Future<void> _openTaskDetails(TaskItem task) async {
-    await Navigator.of(context).pushNamed<void>(
-      AppRouter.taskDetails,
-      arguments: task,
-    );
+    await Navigator.of(context)
+        .pushNamed<void>(AppRouter.taskDetails, arguments: task);
     if (mounted) setState(() {});
   }
 
@@ -209,99 +188,6 @@ class _TasksHomePageState extends State<TasksHomePage> {
     );
   }
 
-  Widget _buildProgressCard(int completed, int total) {
-    final progress = total == 0 ? 0.0 : completed / total;
-    return Container(
-      padding: const EdgeInsets.all(19),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF7565E6), Color(0xFF5D4BC8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6958D8).withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      completed == 0
-                          ? 'Хороший день начинается\nс маленьких шагов'
-                          : 'Отличная работа!\nПродолжай в том же духе',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        height: 1.3,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$completed из $total задач выполнено',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.78),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 54,
-                height: 54,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 4,
-                      backgroundColor: Colors.white.withValues(alpha: 0.24),
-                      valueColor:
-                          const AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                    Text(
-                      '${(progress * 100).round()}%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 6,
-              backgroundColor: Colors.white.withValues(alpha: 0.24),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSearchField() {
     return TextField(
       controller: _searchController,
@@ -330,44 +216,6 @@ class _TasksHomePageState extends State<TasksHomePage> {
           borderSide: const BorderSide(color: Color(0xFFB8B0F2)),
         ),
       ),
-    );
-  }
-
-  Widget _buildFilters() {
-    const labels = {
-      TaskFilter.all: 'Все',
-      TaskFilter.active: 'В работе',
-      TaskFilter.done: 'Готово',
-    };
-    return Row(
-      children: TaskFilter.values.map((filter) {
-        final selected = _filter == filter;
-        return Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: ChoiceChip(
-            label: Text(labels[filter]!),
-            selected: selected,
-            onSelected: (_) => setState(() => _filter = filter),
-            showCheckmark: false,
-            labelStyle: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF77798A),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-            backgroundColor: Colors.white,
-            selectedColor: const Color(0xFF6958D8),
-            side: BorderSide(
-              color: selected
-                  ? const Color(0xFF6958D8)
-                  : const Color(0xFFEDEDF3),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -402,19 +250,60 @@ class _TasksHomePageState extends State<TasksHomePage> {
   }
 
   Future<void> _showAddTaskDialog() async {
-    final controller = TextEditingController();
-    final title = await showDialog<String>(
+    final titleController = TextEditingController();
+    final detailsController = TextEditingController();
+    final timeController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final shouldAdd = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Новая задача'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            hintText: 'Например, прочитать книгу',
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: titleController,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'Название',
+                    hintText: 'Например, прочитать книгу',
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Введите название задачи';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: detailsController,
+                  textCapitalization: TextCapitalization.sentences,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Описание',
+                    hintText: 'Дополнительная информация',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: timeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Время',
+                    hintText: 'Например, 14:30',
+                    prefixIcon: Icon(Icons.schedule_rounded),
+                  ),
+                ),
+              ],
+            ),
           ),
-          onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
         ),
         actions: [
           TextButton(
@@ -422,27 +311,35 @@ class _TasksHomePageState extends State<TasksHomePage> {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(true);
+              }
+            },
             child: const Text('Добавить'),
           ),
         ],
       ),
     );
-    controller.dispose();
-    if (title == null || title.isEmpty || !mounted) return;
+    final title = titleController.text.trim();
+    final details = detailsController.text.trim();
+    final time = timeController.text.trim();
+    titleController.dispose();
+    detailsController.dispose();
+    timeController.dispose();
+    if (shouldAdd != true || !mounted) return;
 
     setState(() {
       _tasks.add(
         TaskItem(
           title: title,
-          details: 'Новая задача',
-          time: 'Сегодня',
+          details: details,
+          time: time.isEmpty ? 'Без времени' : time,
           category: 'Личное',
           color: const Color(0xFF6958D8),
           icon: Icons.check_circle_outline_rounded,
         ),
       );
-      _filter = TaskFilter.all;
       _query = '';
       _searchController.clear();
     });

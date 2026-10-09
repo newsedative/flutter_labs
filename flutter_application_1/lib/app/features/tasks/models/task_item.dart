@@ -8,7 +8,6 @@ class TaskItem {
     required this.category,
     required this.color,
     required this.icon,
-    this.isDone = false,
   });
 
   final String title;
@@ -17,5 +16,4 @@ class TaskItem {
   final String category;
   final Color color;
   final IconData icon;
-  bool isDone;
 }

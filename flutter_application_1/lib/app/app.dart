@@ -1,5 +1,4 @@
 export 'extensions/date_time_extensions.dart';
-export 'features/tasks/models/task_filter.dart';
 export 'features/tasks/models/task_item.dart';
 export 'features/tasks/screens/task_details_page.dart';
 export 'features/tasks/screens/tasks_home_page.dart';
