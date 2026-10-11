@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_application_1/app/di.dart';
 import 'package:flutter_application_1/app/extensions/date_time_extensions.dart';
+import 'package:flutter_application_1/app/features/tasks/bloc/home_bloc.dart';
+import 'package:flutter_application_1/app/features/tasks/models/content.dart';
 import 'package:flutter_application_1/app/features/tasks/models/task_item.dart';
 import 'package:flutter_application_1/app/router/app_router.dart';
 import 'package:flutter_application_1/app/widgets/count_badge.dart';
@@ -13,8 +17,18 @@ class TasksHomePage extends StatefulWidget {
 }
 
 class _TasksHomePageState extends State<TasksHomePage> {
+  late final HomeBloc _homeBloc;
   final _searchController = TextEditingController();
   String _query = '';
+
+  static const List<Color> _taskColors = [
+    Color(0xFF6958D8),
+    Color(0xFFE99A62),
+    Color(0xFF48A891),
+    Color(0xFFE47783),
+    Color(0xFF5F9BFF),
+  ];
+
   final List<TaskItem> _tasks = [
     TaskItem(
       title: 'Подготовить презентацию',
@@ -51,13 +65,42 @@ class _TasksHomePageState extends State<TasksHomePage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _homeBloc = getIt<HomeBloc>();
+    _homeBloc.add(const HomeLoad());
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  List<TaskItem> get _visibleTasks {
-    return _tasks.where((task) {
+  TaskItem _mapContentToTask(Content content) {
+    final color = _taskColors[content.id % _taskColors.length];
+    final hour = (content.id % 12) + 8;
+    final minutes = (content.id * 7) % 60;
+
+    return TaskItem(
+      title: content.title,
+      details: content.description,
+      time: '${hour.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}',
+      category: 'Личное',
+      color: color,
+      icon: Icons.check_circle_outline_rounded,
+    );
+  }
+
+  Widget _buildContent(HomeState state) {
+    final List<TaskItem> currentTasks;
+    if (state is HomeLoadSuccess) {
+      currentTasks = state.content.map(_mapContentToTask).toList();
+    } else {
+      currentTasks = _tasks;
+    }
+
+    final visibleTasks = currentTasks.where((task) {
       final normalizedQuery = _query.toLowerCase();
       final matchesSearch =
           task.title.toLowerCase().contains(normalizedQuery) ||
@@ -65,64 +108,111 @@ class _TasksHomePageState extends State<TasksHomePage> {
           task.category.toLowerCase().contains(normalizedQuery);
       return matchesSearch;
     }).toList();
+
+    return SafeArea(
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(22, 14, 22, 28),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildTopBar(),
+                const SizedBox(height: 30),
+                Text(
+                  DateTime.now().russianDateLabel,
+                  style: const TextStyle(
+                    color: Color(0xFF8A8C9D),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Твой план',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 24),
+                _buildSearchField(),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Text(
+                      'Задачи',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(width: 9),
+                    CountBadge(count: visibleTasks.length),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                if (visibleTasks.isEmpty)
+                  _buildEmptyState()
+                else
+                  ...visibleTasks.map(
+                    (task) => Padding(
+                      padding: const EdgeInsets.only(bottom: 11),
+                      child: TaskCard(
+                        task: task,
+                        onTap: () => _openTaskDetails(task),
+                      ),
+                    ),
+                  ),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(22, 14, 22, 28),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _buildTopBar(),
-                  const SizedBox(height: 30),
-                  Text(
-                    DateTime.now().russianDateLabel,
-                    style: const TextStyle(
-                      color: Color(0xFF8A8C9D),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+      body: BlocBuilder<HomeBloc, HomeState>(
+        bloc: _homeBloc,
+        builder: (context, state) {
+          if (state is HomeLoadInProgress) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (state is HomeLoadFailure) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.signal_wifi_connected_no_internet_4_rounded,
+                      size: 56,
+                      color: Color(0xFF6958D8),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Твой план',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSearchField(),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Text(
-                        'Задачи',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(width: 9),
-                      CountBadge(count: _visibleTasks.length),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  if (_visibleTasks.isEmpty)
-                    _buildEmptyState()
-                  else
-                    ..._visibleTasks.map(
-                      (task) => Padding(
-                        padding: const EdgeInsets.only(bottom: 11),
-                        child: TaskCard(
-                          task: task,
-                          onTap: () => _openTaskDetails(task),
-                        ),
-                      ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Не удалось загрузить данные',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                ]),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${state.exception}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF646B82)),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => _homeBloc.add(const HomeLoad()),
+                      child: const Text('Повторить запрос'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            );
+          }
+
+          return _buildContent(state);
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddTaskDialog,
